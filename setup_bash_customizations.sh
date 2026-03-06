@@ -4,26 +4,6 @@
 BASHRC="$HOME/.bashrc"
 FUNCFILE="$HOME/.bash_functions"
 
-# === Create the Restore-DB.sql file used by the restoredb function ===
-SQL_DIRECTORY="$HOME/Documents/Useful SQL"
-SQL_FILE="$SQL_DIRECTORY/Restore-DB.sql"
-
-mkdir -p "$SQL_DIRECTORY"
-
-cat > "$SQL_FILE" <<'EOF'
-USE [master]
-ALTER DATABASE [Hamaspik_Dev] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-
-RESTORE DATABASE [Hamaspik_Dev]
-  FROM DISK = N'C:\Temp\$(backup_filename)'
-  WITH FILE = 1, NOUNLOAD, REPLACE, STATS = 5;
-
-ALTER DATABASE [Hamaspik_Dev] SET MULTI_USER;
-GO
-USE [Hamaspik_Dev];
-EOF
-# === END: create Restore-DB.sql ===
-
 # Prompt for the Git branch username (only once per setup)
 read -p "Enter your Git username for branch prefixes: " GIT_BRANCH_USER
 
@@ -391,4 +371,5 @@ fi
 grep -qxF 'shopt -s autocd' "$BASHRC" || echo 'shopt -s autocd' >> "$BASHRC"
 
 echo "Custom aliases and functions updated!"
+
 
