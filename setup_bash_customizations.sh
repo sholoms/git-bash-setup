@@ -219,22 +219,23 @@ function restoredb() {
     local sql_script="$HOME/Documents/Useful SQL/Restore-DB.sql"
     local arg="$1"
     local backup_file="$temp_path"  # Default
+
+    echo "[$(date)] Starting restoredb function..."
+	
 	echo "======================================================================================="
     echo " WARNING: Do NOT cancel, stop, or interrupt this operation once it begins!"
     echo "          Interrupting database restore can cause the database to remain inaccessible,"
     echo "          or result in data corruption. Please let the process finish."
     echo "======================================================================================="
-
-    echo "[$(date)] Starting restoredb function..."
-
+	
     if [[ "$1" == "last" || "$1" == "--last" || "$1" == "-l" ]]; then
         echo "[$(date)] Using existing $temp_path without modifying it."
         if [[ ! -f "$temp_path" ]]; then
             echo "[$(date)] Error: No temp backup found at $temp_path!"
             return 1
         fi
-	
-	elif [[ "$1" == "copy" || "$1" == "--copy" || "$1" == "-cp" ]]; then
+
+    elif [[ "$1" == "copy" || "$1" == "--copy" || "$1" == "-cp" ]]; then
          # Archive the current backup if exists
         if [[ -f "$temp_path" ]]; then
             local lastmod=$(date -r "$temp_path" +"%m-%d")
@@ -250,12 +251,11 @@ function restoredb() {
         cp "$backup_path" "$temp_path"
         if [[ $? -eq 0 ]]; then
             echo "[$(date)] Copy complete."
-			return 1
+            return 1
         else
             echo "[$(date)] Error: Copy failed!"
             return 1
         fi
-		
 
     elif [[ -n "$arg" ]]; then
         # Restore from a dated backup
@@ -308,25 +308,30 @@ function restoredb() {
 }
 
 function restoredb_help() {
-    echo "Usage: restoredb [DATE|l|dates|help]"
-    echo
-    echo "Options:"
-    echo "  DATE        Restore the database from the backup taken on the given date."
-    echo "              Date format: m-d (e.g. 2-9 for Feb 9)"
-    echo "              Example: restoredb 2-9      # Restores from /c/Temp/K_HamaspikLive-2-9.bak"
-    echo "  last, -l    Restore the database from the existing K_HamaspikLive.bak in /c/Temp/."
-    echo "              Example: restoredb l"
-    echo "  dates, -d   List all available dated backup files in /c/Temp."
-    echo "              Example: restoredb dates"
-    echo "  clean, -cl  Remove all backups older than 1 month in /c/Temp."
-    echo "              Example: restoredb clean"
-	echo "  copy, -cp   Create a dated backup of the existing temp file (if any), copy the main backup to the temp location, but don't restore"
-    echo "              Example: restoredb copy"
-    echo "  help, -h,   Show this help message."
-    echo
-    echo "No argument:  Create a dated backup of the existing temp file (if any), copy the main backup to the temp location, and restore."
-    echo "              Example: restoredb"
-    echo
+    cat <<EOF2
+
+  WARNING: Do NOT cancel, stop, or interrupt once restore has started!
+
+Usage: restoredb [DATE|l|dates|help]
+Options:
+  DATE        Restore the database from the backup taken on the given date.
+              Date format: m-d (e.g. 2-9 for Feb 9)
+              Example: restoredb 2-9      # Restores from /c/Temp/K_HamaspikLive-2-9.bak
+  last, -l    Restore the database from the existing K_HamaspikLive.bak in /c/Temp/.
+              Example: restoredb l
+  dates, -d   List all available dated backup files in /c/Temp.
+              Example: restoredb dates
+  clean, -cl  Remove all backups older than 1 month in /c/Temp.
+              Example: restoredb clean
+  copy, -cp   Create a dated backup of the existing temp file (if any), copy the main backup to the temp location, but don't restore
+              Example: restoredb copy
+  help, -h,   Show this help message.
+
+No argument:  Create a dated backup of the existing temp file (if any), copy the main backup to the temp location, and restore.
+              Example: restoredb
+			  
+			  
+EOF2
 }
 
 function cleanup_old_backups() {
@@ -364,22 +369,175 @@ function cleanup_old_backups() {
     fi
 }
 
-complete -d mkcd
+function help_functions() {
+    local target="$1"
+    if [[ -z "$target" ]]; then
+        cat <<EOF2
+Available custom shell functions and aliases:
 
-# Enable filename completion for restoredb
-complete -f restoredb
+  gcs <branch-pattern>              - Quick-switch to branch matching pattern.
+  gbdel <branch-pattern>            - Delete branches matching (with safety/confirm).
+  gcb <b|e|h|other> <branch-name>   - Create & checkout branches by convention.
+  search <pattern>                  - Grep Bash history for the pattern.
+  restoredb [DATE|l|dates|...]      - Restore/Manage SQL database backups.
+  Aliases: gl gc gp gst gd gf gb repos restart gpsup gbd 1 .. ... .... ll lsa lla grs dev data gco addalias ga gddev gddata sweep gt gtl gtd gtp gts
 
-# Enable branch name completion for gcb
-_git_branch_names() {
-    # Get a list of branches, clean up output, and match the current word
-    local cur="${COMP_WORDS[COMP_CWORD]}"
-    COMPREPLY=( $(git branch --all | sed 's/^[* ]*//' | grep "^$cur") )
+Run:
+  help_functions <function-or-alias>
+
+  - to get more details about any listed function or alias.
+EOF2
+        return 0
+    fi
+
+    case "$target" in
+        gcs)
+            cat <<EOF2
+gcs <branch-pattern>
+  Quickly check out the branch matching <branch-pattern>.
+  - If one match, immediately switches to it.
+  - If multiple, lists them and aborts.
+Example:
+  gcs feat      # Jumps to first branch matching 'feat'
+EOF2
+            ;;
+        gbdel)
+            cat <<EOF2
+gbdel <branch-pattern>
+  Deletes branches matching the pattern (but not the current branch).
+  - Merged branches: deleted safely (git branch -d).
+  - Unmerged: lists, asks for confirmation, force deletes (git branch -D).
+  - Prompts before deleting. Skips your current checked-out branch.
+Example:
+  gbdel temp
+EOF2
+            ;;
+        gcb)
+            cat <<EOF2
+gcb <b|e|h|other> <branch-name>
+  Checks out a new branch using username convention if b/e:
+    b: Users/<username>/bugs/<branch-name>
+    e: Users/<username>/epics/<branch-name>
+    h: Print help on gcb usage
+    other: fallback to git checkout -b <value>
+Example:
+  gcb b 123
+EOF2
+            ;;
+        search)
+            cat <<EOF2
+search <pattern>
+  Search your Bash history for the given pattern, case-insensitive.
+Example:
+  search ssh
+EOF2
+            ;;
+          restoredb)
+            restoredb_help
+            ;;
+        gl)
+            echo "gl : git pull - Download new changes from the remote repository and update your current branch."
+            ;;
+        gc)
+            echo "gc : git commit - Save staged changes to your repository with a commit message."
+            ;;
+        gp)
+            echo "gp : git push - Upload your current branch commits to the remote repository."
+            ;;
+        gst)
+            echo "gst : git status - Display the state of the working directory and the staging area."
+            ;;
+        gd)
+            echo "gd : git diff - Show differences between files in your working directory, staging, or commits."
+            ;;
+        gf)
+            echo "gf : git fetch - Download new branches and data from the remote repository but do not merge."
+            ;;
+        gb)
+            echo "gb : git branch - List, create, or delete branches in your local repository."
+            ;;
+        repos)
+            echo "repos : cd \$HOME/source/repos - Quickly change to your main source code repositories folder."
+            ;;
+        restart)
+            echo "restart : source ~/.bashrc - Reload your shell configuration to apply changes immediately."
+            ;;
+        gpsup)
+            echo "gpsup : git push --set-upstream origin <current-branch> - Pushes the current local branch and sets it to track origin."
+            ;;
+        gbd)
+            echo "gbd : git branch --delete - Deletes a local branch safely (won't delete if unmerged)."
+            ;;
+        1)
+            echo "1 : cd - - Change to your previous working directory."
+            ;;
+        ..)
+            echo ".. : cd .. - Navigate up one directory."
+            ;;
+        ...)
+            echo "... : cd ../.. - Navigate up two directories."
+            ;;
+        ....)
+            echo ".... : cd ../../.. - Navigate up three directories."
+            ;;
+        ll)
+            echo "ll : ls -lh - List files in long format with human-friendly file sizes."
+            ;;
+        lsa)
+            echo "lsa : ls -a - List all files, including hidden ones."
+            ;;
+        lla)
+            echo "lla : ls -lha - List all files in long listing format with human sizes, including hidden files."
+            ;;
+        grs)
+            echo "grs : git restore - Discard changes in your working directory or staging area."
+            ;;
+        dev)
+            echo "dev : git checkout _Dev - Switch directly to the _Dev branch."
+            ;;
+        data)
+            echo "data : git checkout _Data - Switch directly to the _Data branch."
+            ;;
+        gco)
+            echo "gco : git checkout - Switch branches or restore working tree files."
+            ;;
+        addalias)
+            echo "addalias : vim ~/.bashrc - Open your .bashrc in Vim to add or edit aliases."
+            ;;
+        ga)
+            echo "ga : git add - Stage file changes for commit to the repository."
+            ;;
+        gddev)
+            echo "gddev : git diff origin/_Dev - Show differences between your work and the remote _Dev branch."
+            ;;
+        gddata)
+            echo "gddata : git diff origin/_Data - Show differences between your work and the remote _Data branch."
+            ;;
+        sweep)
+            echo "sweep : Delete all merged local branches except important ones (_Dev, _Data, Kings_Master)."
+            ;;
+        gt)
+            echo "gt : git stash - Stash away your modified tracked files for a clean working directory."
+            ;;
+        gtl)
+            echo "gtl : git stash list - List your stashed changes."
+            ;;
+        gtd)
+            echo "gtd : git stash drop - Remove a single stash entry from your list of stashes."
+            ;;
+        gtp)
+            echo "gtp : git stash pop - Reapply the most recent stash and remove it from the stack."
+            ;;
+        gts)
+            echo "gts : git stash show -p - Display the changes recorded in the most recent stash in patch format."
+            ;;
+        *)
+            echo "No detailed help found for '$target'. Try 'help_functions' for a list."
+            ;;
+    esac
 }
 
-complete -F _git_branch_names gcb
-
-
-
+# END CUSTOM FUNCTIONS
 EOF
 
 # Append the gcb function with username
@@ -397,146 +555,6 @@ function gcb() {
         git checkout -b "\$1"
     fi
 }
-
-
-function help_functions() {
-    local target="$1"
-    if [[ -z "$target" ]]; then
-        cat <<EOF
-Available custom shell functions and aliases:
-
-  gcs <branch-pattern>              - Quick-switch to branch matching pattern.
-  gbdel <branch-pattern>            - Delete branches matching (with safety/confirm).
-  gcb <b|e|h|other> <branch-name>   - Create & checkout branches by convention.
-  search <pattern>                  - Grep Bash history for the pattern.
-  restoredb [DATE|l|dates|...]      - Restore/Manage SQL database backups.
-  restoredb_help                    - Show full usage for restoredb.
-  cleanup_old_backups               - Remove old dated backup files.
-  Aliases: gl gc gp gst gd gf gb repos restart gpsup gbd 1 .. ... .... ll lsa lla grs dev data gco addalias ga gddev gddata sweep gt gtl gtd gtp gts
-
-Run:
-  help_functions <function-or-alias>
-
-  - to get more details about any listed function or alias.
-EOF
-        return 0
-    fi
-
-    case "$target" in
-        gcs)
-            cat <<EOF
-gcs <branch-pattern>
-  Quickly check out the branch matching <branch-pattern>.
-  - If one match, immediately switches to it.
-  - If multiple, lists them and aborts.
-Example:
-  gcs feat      # Jumps to first branch matching 'feat'
-EOF
-            ;;
-        gbdel)
-            cat <<EOF
-gbdel <branch-pattern>
-  Deletes branches matching the pattern (but not the current branch).
-  - Merged branches: deleted safely (git branch -d).
-  - Unmerged: lists, asks for confirmation, force deletes (git branch -D).
-  - Prompts before deleting. Skips your current checked-out branch.
-Example:
-  gbdel temp
-EOF
-            ;;
-        gcb)
-            cat <<EOF
-gcb <b|e|h|other> <branch-name>
-  Checks out a new branch using username convention if b/e:
-    b: Users/<username>/bugs/<branch-name>
-    e: Users/<username>/epics/<branch-name>
-    h: Print help on gcb usage
-    other: fallback to git checkout -b <value>
-Example:
-  gcb b JIRA-123
-EOF
-            ;;
-        search)
-            cat <<EOF
-search <pattern>
-  Search your Bash history for the given pattern, case-insensitive.
-Example:
-  search ssh
-EOF
-            ;;
-        restoredb)
-            cat <<EOF
-restoredb [DATE|l|dates|help|clean|copy]
-  Restores 'Hamaspik_Dev' database from recent backup or by date.
-  WARNING: Do NOT cancel, stop, or interrupt once started!
-Options:
-  <DATE>     Restore from /c/Temp/K_HamaspikLive-<DATE>.bak (DATE=m-d)
-  l|-l       Use latest in /c/Temp/K_HamaspikLive.bak
-  dates|-d   List available backup dates
-  clean|-cl  Remove old dated backup files
-  copy|-cp   Copy main backup to temp location, don't restore
-  help|-h    See detailed usage (or run: restoredb_help)
-EOF
-            ;;
-        restoredb_help)
-            cat <<EOF
-restoredb_help
-  Shows detailed help and examples for using the restoredb function.
-EOF
-            ;;
-        cleanup_old_backups)
-            cat <<EOF
-cleanup_old_backups
-  Finds /c/Temp/K_HamaspikLive-*.bak files >30 days old, asks for confirmation, deletes if yes.
-EOF
-            ;;
-        gl|gc|gp|gst|gd|gf|gb|repos|restart|gpsup|gbd|1|..|...|....|ll|lsa|lla|grs|dev|data|gco|addalias|ga|gddev|gddata|sweep|gt|gtl|gtd|gtp|gts)
-            {
-                declare -A alias_detail=(
-["gl"]="git pull"
-["gc"]="git commit"
-["gp"]="git push"
-["gst"]="git status"
-["gd"]="git diff"
-["gf"]="git fetch"
-["gb"]="git branch"
-["repos"]="cd \$HOME/source/repos"
-["restart"]="source ~/.bashrc"
-["gpsup"]="git push --set-upstream origin \$(git branch --show-current)"
-["gbd"]="git branch --delete"
-["1"]="cd -"
-[".."]="cd .."
-["..."]="cd ../.."
-["...."]="cd ../../.."
-["ll"]="ls -lh"
-["lsa"]="ls -a"
-["lla"]="ls -lha"
-["grs"]="git restore"
-["dev"]="git checkout _Dev"
-["data"]="git checkout _Data"
-["gco"]="git checkout"
-["addalias"]="vim ~/.bashrc"
-["ga"]="git add"
-["gddev"]="git diff origin/_Dev"
-["gddata"]="git diff origin/_Data"
-["sweep"]="git branch --merged | grep -v \"\\*\\|Kings_Master\\|_Dev\\|_Data\" | xargs -n 1 git branch -d"
-["gt"]="git stash"
-["gtl"]="git stash list"
-["gtd"]="git stash drop"
-["gtp"]="git stash pop"
-["gts"]="git stash show -p"
-                )
-                desc=${alias_detail[$target]}
-                echo "$target : $desc"
-            }
-            ;;
-        *)
-            echo "No detailed help found for '$target'. Try 'help_functions' for a list."
-            ;;
-    esac
-}
-
-
 # END CUSTOM FUNCTIONS
 
 EOF
