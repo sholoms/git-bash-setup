@@ -188,187 +188,6 @@ function search() {
   history | grep -i "$1"
 }
 
-function restoredb() {
-    if [[ "$1" == "help" || "$1" == "--help" || "$1" == "-h" ]]; then
-        restoredb_help
-        return 0
-    fi
-
-    if [[ "$1" == "clean" || "$1" == "-cl" ]]; then
-        cleanup_old_backups
-        return 0
-    fi
-
-    if [[ "$1" == "dates" || "$1" == "--dates" || "$1" == "-d" ]]; then
-        echo "Available backup dates in /c/Temp:"
-        shopt -s nullglob
-
-        for file in /c/Temp/K_HamaspikLive-*.bak; do
-            filename=$(basename "$file")
-            # Extract date part: removes prefix and suffix
-            date_part=${filename#K_HamaspikLive-}
-            date_part=${date_part%.bak}
-            echo "  $date_part"
-        done
-        shopt -u nullglob
-        return 0
-    fi
-
-    local backup_path="/q/HKC/K_HamaspikLive.bak"
-    local temp_path="/c/Temp/K_HamaspikLive.bak"
-    local sql_script="$HOME/Documents/Useful SQL/Restore-DB.sql"
-    local arg="$1"
-    local backup_file="$temp_path"  # Default
-
-    echo "[$(date)] Starting restoredb function..."
-	
-	echo "======================================================================================="
-    echo " WARNING: Do NOT cancel, stop, or interrupt this operation once it begins!"
-    echo "          Interrupting database restore can cause the database to remain inaccessible,"
-    echo "          or result in data corruption. Please let the process finish."
-    echo "======================================================================================="
-	
-    if [[ "$1" == "last" || "$1" == "--last" || "$1" == "-l" ]]; then
-        echo "[$(date)] Using existing $temp_path without modifying it."
-        if [[ ! -f "$temp_path" ]]; then
-            echo "[$(date)] Error: No temp backup found at $temp_path!"
-            return 1
-        fi
-
-    elif [[ "$1" == "copy" || "$1" == "--copy" || "$1" == "-cp" ]]; then
-         # Archive the current backup if exists
-        if [[ -f "$temp_path" ]]; then
-            local lastmod=$(date -r "$temp_path" +"%m-%d")
-            local renamed="${temp_path%.*}-$lastmod.bak"
-            echo "[$(date)] Existing backup found at $temp_path. Renaming to $renamed..."
-            mv "$temp_path" "$renamed"
-            echo "[$(date)] Renamed existing backup to $renamed."
-        else
-            echo "[$(date)] No existing backup at $temp_path to rename."
-        fi
-
-        echo "[$(date)] Copying $backup_path to $temp_path..."
-        cp "$backup_path" "$temp_path"
-        if [[ $? -eq 0 ]]; then
-            echo "[$(date)] Copy complete."
-            return 1
-        else
-            echo "[$(date)] Error: Copy failed!"
-            return 1
-        fi
-
-    elif [[ -n "$arg" ]]; then
-        # Restore from a dated backup
-        local dated_backup="${temp_path%.*}-$arg.bak"
-        if [[ -f "$dated_backup" ]]; then
-            echo "[$(date)] Restoring from dated backup: $dated_backup"
-            backup_file="$dated_backup"
-        else
-            echo "[$(date)] Error: No backup found for the specified date ($arg): $dated_backup"
-            return 1
-        fi
-
-    else
-        # Archive the current backup if exists
-        if [[ -f "$temp_path" ]]; then
-            local lastmod=$(date -r "$temp_path" +"%m-%d")
-            local renamed="${temp_path%.*}-$lastmod.bak"
-            echo "[$(date)] Existing backup found at $temp_path. Renaming to $renamed..."
-            mv "$temp_path" "$renamed"
-            echo "[$(date)] Renamed existing backup to $renamed."
-        else
-            echo "[$(date)] No existing backup at $temp_path to rename."
-        fi
-
-        echo "[$(date)] Copying $backup_path to $temp_path..."
-        cp "$backup_path" "$temp_path"
-        if [[ $? -eq 0 ]]; then
-            echo "[$(date)] Copy complete."
-        else
-            echo "[$(date)] Error: Copy failed!"
-            return 1
-        fi
-        backup_file="$temp_path"
-    fi
-
-    # Just extract the file name for the SQL script variable
-    local backup_filename=$(basename "$backup_file")
-    echo "[$(date)] Using backup file name for SQL: $backup_filename"
-
-    echo "[$(date)] Running SQL restore script with Windows Authentication, backup_filename: $backup_filename"
-    sqlcmd -S "HKCPC385\\SQLEXPRESS" -E -i "$sql_script" -v backup_filename="$backup_filename"
-    if [[ $? -eq 0 ]]; then
-        echo "[$(date)] Database restore script completed successfully."
-    else
-        echo "[$(date)] Error: Database restore script failed!"
-        return 1
-    fi
-
-    echo "[$(date)] restoredb function finished."
-}
-
-function restoredb_help() {
-    cat <<EOF2
-
-  WARNING: Do NOT cancel, stop, or interrupt once restore has started!
-
-Usage: restoredb [DATE|l|dates|help]
-Options:
-  DATE        Restore the database from the backup taken on the given date.
-              Date format: m-d (e.g. 2-9 for Feb 9)
-              Example: restoredb 2-9      # Restores from /c/Temp/K_HamaspikLive-2-9.bak
-  last, -l    Restore the database from the existing K_HamaspikLive.bak in /c/Temp/.
-              Example: restoredb l
-  dates, -d   List all available dated backup files in /c/Temp.
-              Example: restoredb dates
-  clean, -cl  Remove all backups older than 1 month in /c/Temp.
-              Example: restoredb clean
-  copy, -cp   Create a dated backup of the existing temp file (if any), copy the main backup to the temp location, but don't restore
-              Example: restoredb copy
-  help, -h,   Show this help message.
-
-No argument:  Create a dated backup of the existing temp file (if any), copy the main backup to the temp location, and restore.
-              Example: restoredb
-			  
-			  
-EOF2
-}
-
-function cleanup_old_backups() {
-    local backup_dir="/c/Temp"
-    local pattern="K_HamaspikLive-*.bak"
-    local days_old=30
-
-    echo "[$(date)] Scanning $backup_dir for backups older than $days_old days..."
-
-    # Capture matching old files in an array
-    mapfile -t old_files < <(find "$backup_dir" -type f -name "$pattern" -mtime +$days_old)
-
-    if [[ ${#old_files[@]} -eq 0 ]]; then
-        echo "[$(date)] No old backups found. Nothing to delete."
-        return 0
-    fi
-
-    echo "[$(date)] The following backups are older than $days_old days:"
-    for f in "${old_files[@]}"; do
-        echo "    $f"
-    done
-
-    echo -n "Delete ALL the above files? [y/N]: "
-    read -r confirm
-
-    if [[ $confirm =~ ^[Yy]$ ]]; then
-        echo "[$(date)] Deleting files..."
-        for f in "${old_files[@]}"; do
-            echo "Deleting: $f"
-            rm -v "$f"
-        done
-        echo "[$(date)] Cleanup complete."
-    else
-        echo "Aborted. No files were deleted."
-    fi
-}
-
 function help_functions() {
     local target="$1"
     if [[ -z "$target" ]]; then
@@ -379,7 +198,6 @@ Available custom shell functions and aliases:
   gbdel <branch-pattern>            - Delete branches matching (with safety/confirm).
   gcb <b|e|h|other> <branch-name>   - Create & checkout branches by convention.
   search <pattern>                  - Grep Bash history for the pattern.
-  restoredb [DATE|l|dates|...]      - Restore/Manage SQL database backups.
   Aliases: gl gc gp gst gd gf gb repos restart gpsup gbd 1 .. ... .... ll lsa lla grs dev data gco addalias ga gddev gddata sweep gt gtl gtd gtp gts
 
 Run:
@@ -431,9 +249,6 @@ search <pattern>
 Example:
   search ssh
 EOF2
-            ;;
-          restoredb)
-            restoredb_help
             ;;
         gl)
             echo "gl : git pull - Download new changes from the remote repository and update your current branch."
@@ -576,3 +391,4 @@ fi
 grep -qxF 'shopt -s autocd' "$BASHRC" || echo 'shopt -s autocd' >> "$BASHRC"
 
 echo "Custom aliases and functions updated!"
+
