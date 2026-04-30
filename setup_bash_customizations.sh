@@ -174,163 +174,133 @@ function search() {
 function help_functions() {
     local target="$1"
     if [[ -z "$target" ]]; then
-        cat <<EOF2
+        cat <<'EOF'
 Available custom shell functions and aliases:
 
-  gcs <branch-pattern>              - Quick-switch to branch matching pattern.
-  gbdel <branch-pattern>            - Delete branches matching (with safety/confirm).
-  gcb <b|e|h|other> <branch-name>   - Create & checkout branches by convention.
-  search <pattern>                  - Grep Bash history for the pattern.
-  Aliases: gl gc gp gst gd gf gb repos restart gpsup gbd 1 .. ... .... ll lsa lla grs dev data gco addalias ga gddev gddata sweep gt gtl gtd gtp gts
+Git Functions:
+  gcb <b|e|h> <name>   Create branch by convention (Bug, Epic).
+  gcs <pattern>        Switch to a branch matching a pattern.
+  gbdel <pattern>      Interactively delete local branches matching a pattern.
+  search <pattern>     Search command history.
+  help_functions [cmd] Show this help, or details for a specific command.
 
-Run:
-  help_functions <function-or-alias>
+Git Aliases:
+  Workflow:
+    gl       git pull
+    gp       git push
+    gpsup    git push --set-upstream origin <current-branch>
+    gf       git fetch
+    ga       git add
+    gc       git commit
+    wip      git add . && git commit -m "WIP"
+    grs      git restore
+    unstage  git restore --staged
 
-  - to get more details about any listed function or alias.
-EOF2
+  Status & Logging:
+    gst      git status
+    gd       git diff
+    glo      git log --oneline --decorate
+    glog     git log --oneline --decorate --graph
+    gloga    git log --oneline --decorate --graph --all
+
+  Branching:
+    gb       git branch
+    gco      git checkout
+    gbd      git branch --delete
+    sweep    Delete all local merged branches (except main/master/dev).
+    dev      git checkout _Dev
+    data     git checkout _Data
+
+  Stashing:
+    gt       git stash
+    gtl      git stash list
+    gtd      git stash drop
+    gtp      git stash pop
+    gts      git stash show -p
+
+Shell Aliases:
+  Navigation:
+    repos    cd $HOME/source/repos
+    ..       cd ..
+    ...      cd ../..
+    ....     cd ../../..
+    1        cd - (go to previous directory)
+
+  Listing:
+    ll       ls -lh
+    lsa      ls -a
+    lla      ls -lha
+
+  Configuration:
+    restart    source ~/.bashrc
+    addalias   vim ~/.bashrc
+
+Run 'help_functions <command>' for more details.
+EOF
         return 0
     fi
 
+    # Case statement for detailed help on each command
     case "$target" in
-        gcs)
-            cat <<EOF2
-gcs <branch-pattern>
-  Quickly check out the branch matching <branch-pattern>.
-  - If one match, immediately switches to it.
-  - If multiple, lists them and aborts.
+        gcb)
+            cat <<'EOF'
+gcb <b|e|h|other> <branch-name>
+  Create and checkout a new branch with a conventional name.
+  - 'b': Creates Users/<user>/bugs/<branch-name>
+  - 'e': Creates Users/<user>/epics/<branch-name>
+  - 'h': Prints this help message.
+  - Any other value is passed directly to 'git checkout -b'.
 Example:
-  gcs feat      # Jumps to first branch matching 'feat'
-EOF2
+  gcb b fix-login-bug  # Creates Users/sholoms/bugs/fix-login-bug
+EOF
+            ;;
+        gcs)
+            cat <<'EOF'
+gcs <branch-pattern>
+  Quickly checkout a branch that matches a search pattern.
+  - If exactly one branch matches, it switches to it.
+  - If multiple branches match, it lists them and prompts for a more specific pattern.
+Example:
+  gcs login  # Switches to 'feature/login' if it's the only match
+EOF
             ;;
         gbdel)
-            cat <<EOF2
+            cat <<'EOF'
 gbdel <branch-pattern>
-  Deletes branches matching the pattern (but not the current branch).
-  - Merged branches: deleted safely (git branch -d).
-  - Unmerged: lists, asks for confirmation, force deletes (git branch -D).
-  - Prompts before deleting. Skips your current checked-out branch.
+  Interactively find and delete local branches matching a pattern.
+  - Lists merged (safe to delete) and unmerged (force delete required) branches.
+  - Skips the current branch automatically.
+  - Prompts for confirmation before deleting any branches.
 Example:
-  gbdel temp
-EOF2
-            ;;
-        gcb)
-            cat <<EOF2
-gcb <b|e|h|other> <branch-name>
-  Checks out a new branch using username convention if b/e:
-    b: Users/<username>/bugs/<branch-name>
-    e: Users/<username>/epics/<branch-name>
-    h: Print help on gcb usage
-    other: fallback to git checkout -b <value>
-Example:
-  gcb b 123
-EOF2
+  gbdel old-feature
+EOF
             ;;
         search)
-            cat <<EOF2
+            cat <<'EOF'
 search <pattern>
-  Search your Bash history for the given pattern, case-insensitive.
+  Searches your command history for a specific pattern (case-insensitive).
 Example:
-  search ssh
-EOF2
-            ;;
-        gl)
-            echo "gl : git pull - Download new changes from the remote repository and update your current branch."
-            ;;
-        gc)
-            echo "gc : git commit - Save staged changes to your repository with a commit message."
-            ;;
-        gp)
-            echo "gp : git push - Upload your current branch commits to the remote repository."
-            ;;
-        gst)
-            echo "gst : git status - Display the state of the working directory and the staging area."
-            ;;
-        gd)
-            echo "gd : git diff - Show differences between files in your working directory, staging, or commits."
-            ;;
-        gf)
-            echo "gf : git fetch - Download new branches and data from the remote repository but do not merge."
-            ;;
-        gb)
-            echo "gb : git branch - List, create, or delete branches in your local repository."
-            ;;
-        repos)
-            echo "repos : cd \$HOME/source/repos - Quickly change to your main source code repositories folder."
-            ;;
-        restart)
-            echo "restart : source ~/.bashrc - Reload your shell configuration to apply changes immediately."
-            ;;
-        gpsup)
-            echo "gpsup : git push --set-upstream origin <current-branch> - Pushes the current local branch and sets it to track origin."
-            ;;
-        gbd)
-            echo "gbd : git branch --delete - Deletes a local branch safely (won't delete if unmerged)."
-            ;;
-        1)
-            echo "1 : cd - - Change to your previous working directory."
-            ;;
-        ..)
-            echo ".. : cd .. - Navigate up one directory."
-            ;;
-        ...)
-            echo "... : cd ../.. - Navigate up two directories."
-            ;;
-        ....)
-            echo ".... : cd ../../.. - Navigate up three directories."
-            ;;
-        ll)
-            echo "ll : ls -lh - List files in long format with human-friendly file sizes."
-            ;;
-        lsa)
-            echo "lsa : ls -a - List all files, including hidden ones."
-            ;;
-        lla)
-            echo "lla : ls -lha - List all files in long listing format with human sizes, including hidden files."
-            ;;
-        grs)
-            echo "grs : git restore - Discard changes in your working directory or staging area."
-            ;;
-        dev)
-            echo "dev : git checkout _Dev - Switch directly to the _Dev branch."
-            ;;
-        data)
-            echo "data : git checkout _Data - Switch directly to the _Data branch."
-            ;;
-        gco)
-            echo "gco : git checkout - Switch branches or restore working tree files."
-            ;;
-        addalias)
-            echo "addalias : vim ~/.bashrc - Open your .bashrc in Vim to add or edit aliases."
-            ;;
-        ga)
-            echo "ga : git add - Stage file changes for commit to the repository."
-            ;;
-        gddev)
-            echo "gddev : git diff origin/_Dev - Show differences between your work and the remote _Dev branch."
-            ;;
-        gddata)
-            echo "gddata : git diff origin/_Data - Show differences between your work and the remote _Data branch."
+  search docker  # Shows all previous commands containing 'docker'
+EOF
             ;;
         sweep)
-            echo "sweep : Delete all merged local branches except important ones (_Dev, _Data, Kings_Master)."
+            echo "sweep : Deletes all local branches that have been merged into the current branch, ignoring protected branches like Master, Main, and Dev."
             ;;
-        gt)
-            echo "gt : git stash - Stash away your modified tracked files for a clean working directory."
+        wip)
+            echo "wip : 'git add .' && 'git commit -m \"WIP\"' - Quickly stages all changes and creates a 'Work In Progress' commit."
             ;;
-        gtl)
-            echo "gtl : git stash list - List your stashed changes."
-            ;;
-        gtd)
-            echo "gtd : git stash drop - Remove a single stash entry from your list of stashes."
-            ;;
-        gtp)
-            echo "gtp : git stash pop - Reapply the most recent stash and remove it from the stack."
-            ;;
-        gts)
-            echo "gts : git stash show -p - Display the changes recorded in the most recent stash in patch format."
+        gpsup)
+            echo "gpsup : 'git push --set-upstream origin <current-branch>' - Pushes the current branch to the remote and sets it to track the remote branch."
             ;;
         *)
-            echo "No detailed help found for '$target'. Try 'help_functions' for a list."
+            # Fallback for aliases to show their definition
+            local definition
+            definition=$(alias "$target" 2>/dev/null)
+            if [[ -n "$definition" ]]; then
+                echo "$definition"
+            else
+                echo "No help available for '$target'. Run 'help_functions' for a full list of commands."
+            fi
             ;;
     esac
 }
