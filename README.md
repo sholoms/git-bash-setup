@@ -1,70 +1,93 @@
-# Bash Setup Customizations
+# Git Bash Setup
 
-This repository provides a comprehensive Bash setup script that personalizes and streamlines your command-line experience for development workflows. The setup script automates the installation of useful aliases and functions, with a focus on developer convenience, Git productivity, and safe database management.
+This repository provides a script to enhance your Git Bash experience with a rich set of aliases and functions, designed for efficiency, especially in environments where `zsh` is not an option.
 
 ## Features
 
-### 1. **Git Aliases and Shortcuts**
-Provides numerous helpful, memorable aliases for common Git commands, such as:
-- `gl` : `git pull`  
-- `gc` : `git commit`  
-- `gp` : `git push`  
-- `gst` : `git status`
-- `gb` : `git branch`
-- `gpsup` : `git push --set-upstream origin $(git branch --show-current)`
-- Shortcuts for git stash management, branch deletion, and branch switching
+- **Quick Setup**: A single script to install all customizations.
+- **Git Aliases**: Shortcuts for many common Git commands.
+- **Branching Helpers**: Functions to streamline branch creation and management.
+- **History Search**: A simple function to search your command history.
+- **Help Function**: An integrated `help_functions` command to explain all custom aliases and functions.
 
-### 2. **Navigational Aliases**
-Boosts your navigation speed with:
-- Directory jump aliases (`1`, `..`, `...`, `....`)
-- `repos` : Quickly navigate to your main repositories folder
-- `restart` : Reload `.bashrc` to apply changes
+## Installation
 
-### 3. **Handy File Listing Aliases**
-Aliases like:
-- `ll`: `ls -lh`
-- `lsa`: `ls -a`
-- `lla`: `ls -lha`
-
-### 4. **Advanced Git Functions**
-Includes interactive and pattern-based branch switching and cleaning:
-- `gcs`: Quickly checkout a branch by pattern match, with smart matching
-- `gbdel`: Safely delete branches by pattern, with clear warnings and confirmation
-
-### 5. **Custom Search & History Tools**
-- `search`: Search your command history for patterns
-
-### 6. **Extensible Help System**
-- `help_functions`:  
-  - Lists available functions and aliases with summaries  
-  - `help_functions <name>` gives details for a specific function or alias  
-  - `help_functions restoredb` shows a full help message (delegated to `restoredb_help`)
-
-### 7. **Setup Automation**
-- Ensures that all aliases and functions are correctly added to your `.bashrc` and `~/.bash_functions`
-- Makes sure `.bash_functions` is sourced if not already
-- Avoids duplicate entries for aliases and completion helpers
-
-## Getting Started
-
-1. **Place the `setup_bash_customizations.sh` file in your home directory.**
-2. Run the setup script:
+1.  **Clone the repository:**
     ```bash
-    bash setup_bash_customizations.sh
+    git clone https://github.com/sholoms/git-bash-setup.git
     ```
-3. Restart your shell, or run:
+
+2.  **Run the setup script:**
+    ```bash
+    cd git-bash-setup
+    ./setup_bash_customizations.sh
+    ```
+    The script will prompt you for your Git username to personalize some of the functions.
+
+3.  **Reload your shell:**
     ```bash
     source ~/.bashrc
     ```
-4. Try out the new commands! For help, just type:
-    ```bash
-    help_functions
-    ```
 
-## Customization
+## Aliases
 
-- The setup script prompts for your Git branch username to personalize branches for your workflow.
-- You can further edit your `.bashrc` and `~/.bash_functions` for additional tweaks.
----
+The following aliases will be available after installation:
 
-Feel free to open an issue or PR for improvements or bugs!
+| Alias | Command | Description |
+|---|---|---|
+| `gl` | `git pull` | Pull changes. |
+| `gc` | `git commit` | Commit changes. |
+| `gp` | `git push` | Push changes. |
+| `gst` | `git status` | Check status. |
+| `gd` | `git diff` | View diffs. |
+| `gf` | `git fetch` | Fetch changes. |
+| `gb` | `git branch` | Manage branches. |
+| `repos` | `cd $HOME/source/repos` | Navigate to repos directory. |
+| `restart` | `source ~/.bashrc` | Reload bash configuration. |
+| `gpsup` | `git push --set-upstream origin $(git branch --show-current)` | Push and set upstream. |
+| `gbd` | `git branch --delete` | Delete a branch. |
+| `1` | `cd -` | Go to previous directory. |
+| `..` | `cd ..` | Go up one directory. |
+| `...` | `cd ../..` | Go up two directories. |
+| `....` | `cd ../../..` | Go up three directories. |
+| `ll` | `ls -lh` | Long list format. |
+| `lsa` | `ls -a` | List all files. |
+| `lla` | `ls -lha` | Long list format including hidden files. |
+| `grs` | `git restore` | Restore files. |
+| `dev` | `git checkout _Dev` | Checkout `_Dev` branch. |
+| `data` | `git checkout _Data` | Checkout `_Data` branch. |
+| `gco` | `git checkout` | Checkout branch. |
+| `addalias`| `vim ~/.bashrc` | Edit bashrc file. |
+| `ga` | `git add` | Add files to staging. |
+| `sweep` | `git branch --merged \| grep -v "\*\|Master\|Main\|Dev" \| xargs -n 1 git branch -d` | Delete merged branches. |
+| `gt` | `git stash` | Stash changes. |
+| `gtl` | `git stash list` | List stashes. |
+| `gtd` | `git stash drop` | Drop a stash. |
+| `gtp` | `git stash pop` | Pop a stash. |
+| `gts` | `git stash show -p` | Show stash diff. |
+| `glo` | `git log --oneline --decorate` | Oneline log. |
+| `glog` | `git log --oneline --decorate --graph` | Oneline log with graph. |
+| `gloga` | `git log --oneline --decorate --graph --all` | Oneline log with graph for all branches. |
+| `wip` | `git add . && git commit -m "WIP"` | Commit all changes with "WIP" message. |
+| `unstage` | `git restore --staged` | Unstage files. |
+
+## Functions
+
+### `gcs <branch-pattern>`
+Quickly checks out a branch that matches a given pattern. If only one branch matches, it will switch to it automatically.
+
+### `gbdel <branch-pattern>`
+Deletes local branches that match a pattern, with safety checks for unmerged work.
+
+### `gcb <b|e|h|other> <branch-name>`
+Creates a new branch with a conventional name based on your username.
+- `b`: for bugs (`Users/<username>/bugs/<branch-name>`)
+- `e`: for epics (`Users/<username>/epics/<branch-name>`)
+- `h`: for help
+- `other`: for any other branch name
+
+### `search <pattern>`
+Searches your command history for a given pattern.
+
+### `help_functions [function-or-alias]`
+Displays help information for all custom functions and aliases, or for a specific one.
